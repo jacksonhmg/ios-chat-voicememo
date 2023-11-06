@@ -8,11 +8,13 @@
 import SwiftUI
 import AVKit
 import Speech
+import Foundation
 
 
 struct ContentView: View {
     @State var audioPlayer: AVAudioPlayer!
     @State private var hasTranscriptionPermission: Bool = false
+    @State var transcribedText: String = "empty"
 
         var body: some View {
                 VStack {
@@ -40,11 +42,115 @@ struct ContentView: View {
                         self.requestTranscribePermissions()
                     }
                     .disabled(hasTranscriptionPermission)
+                    Button("Transcribe Audio") {
+                        guard let soundURL = Bundle.main.url(forResource: "audio", withExtension: "m4a") else {
+                            print("Audio resource not found.")
+                            return
+                        }
+                        self.transcribeAudio(withApiKey: "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") { result in
+                            DispatchQueue.main.async { // Ensure you're on the main thread when updating the UI or handling the result
+                                switch result {
+                                case .success(let data):
+                                    // Handle the successful retrieval of data
+                                    // You may want to convert data to a string if it's expected to be text
+                                    if let transcription = String(data: data, encoding: .utf8) {
+                                        print("Transcription: \(transcription)")
+                                        // Here you can update your UI or state with the transcription result
+                                    }
+                                case .failure(let error):
+                                    // Handle the error case
+                                    print("Error transcribing audio: \(error.localizedDescription)")
+                                    // Here you can show the error to the user or update your state to indicate the error
+                                }
+                            }
+                        }
+
+                    }
+                    Text(self.transcribedText)
                 }
                 .onAppear {
                     preparePlayer()
                 }
         }
+    
+    
+
+    func transcribeAudio(withApiKey apiKey: String, completion: @escaping (Result<Data, Error>) -> Void) {
+        // Assuming `audio.m4a` is in the main bundle
+        guard let audioURL = Bundle.main.url(forResource: "audio", withExtension: "m4a") else {
+            print("Audio file not found in bundle.")
+            return
+        }
+
+        // Create the url for the API request
+        let url = URL(string: "https://api.openai.com/v1/audio/transcriptions")!
+
+        // Set up the request
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.addValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        // Create the body of the request
+        var data = Data()
+        data.append("--\(boundary)\r\n".data(using: .utf8)!)
+        data.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n".data(using: .utf8)!)
+        data.append("whisper-1\r\n".data(using: .utf8)!)
+        data.append("--\(boundary)\r\n".data(using: .utf8)!)
+        data.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(audioURL.lastPathComponent)\"\r\n".data(using: .utf8)!)
+        data.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)
+        if let audioData = try? Data(contentsOf: audioURL) {
+            data.append(audioData)
+        }
+        data.append("\r\n".data(using: .utf8)!)
+        data.append("--\(boundary)--\r\n".data(using: .utf8)!)
+
+        // Set the body of the request to the multipart form data
+        request.httpBody = data
+
+        // Start the upload task
+        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            
+            if let data = data {
+                completion(.success(data))
+            } else {
+                let error = NSError(domain: "TranscriptionError", code: 0, userInfo: [NSLocalizedDescriptionKey: "Data was not retrieved from request"])
+                completion(.failure(error))
+            }
+        }
+        task.resume()
+    }
+
+
+    
+    
+//    func transcribeAudio(url: URL) {
+//        // create a new recognizer and point it at our audio
+//        let recognizer = SFSpeechRecognizer()
+//        let request = SFSpeechURLRecognitionRequest(url: url)
+//
+//        // start recognition!
+//        recognizer?.recognitionTask(with: request) { (result, error) in
+//            // abort if we didn't get any transcription back
+//            guard let result = result else {
+//                print("There was an error: \(error!)")
+//                return
+//            }
+//
+//            // if we got the final transcription back, print it
+//            if result.isFinal {
+//                // pull out the best transcription...
+////                print(result.bestTranscription.formattedString)
+//                self.transcribedText = result.bestTranscription.formattedString
+//            }
+//        }
+//    }
     
     func preparePlayer() {
         guard let soundURL = Bundle.main.url(forResource: "audio", withExtension: "m4a") else {
