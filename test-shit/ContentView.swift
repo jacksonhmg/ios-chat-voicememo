@@ -10,6 +10,9 @@ import AVKit
 import Speech
 import Foundation
 
+struct Transcription: Codable {
+    let text: String
+}
 
 struct ContentView: View {
     @State var audioPlayer: AVAudioPlayer!
@@ -51,11 +54,13 @@ struct ContentView: View {
                             DispatchQueue.main.async { // Ensure you're on the main thread when updating the UI or handling the result
                                 switch result {
                                 case .success(let data):
-                                    // Handle the successful retrieval of data
-                                    // You may want to convert data to a string if it's expected to be text
-                                    if let transcription = String(data: data, encoding: .utf8) {
-                                        print("Transcription: \(transcription)")
-                                        // Here you can update your UI or state with the transcription result
+                                    do {
+                                        let decoder = JSONDecoder()
+                                        let transcriptionResult = try decoder.decode(Transcription.self, from: data)
+                                        print("Transcription: \(transcriptionResult.text)")
+                                        self.transcribedText = transcriptionResult.text
+                                    } catch {
+                                        print("Error decoding transcription: \(error)")
                                     }
                                 case .failure(let error):
                                     // Handle the error case
