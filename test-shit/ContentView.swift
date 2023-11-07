@@ -9,9 +9,28 @@ import SwiftUI
 import AVKit
 import Speech
 import Foundation
+import NaturalLanguage
+
 
 struct Transcription: Codable {
     let text: String
+}
+
+extension String {
+    // Function to chunk the string into sentences.
+    func chunkedIntoSentences() -> [String] {
+        var sentences = [String]()
+        let tokenizer = NLTokenizer(unit: .sentence)
+        tokenizer.string = self
+        
+        tokenizer.enumerateTokens(in: self.startIndex..<self.endIndex) { sentenceRange, _ in
+            let sentence = String(self[sentenceRange])
+            sentences.append(sentence)
+            return true
+        }
+        
+        return sentences
+    }
 }
 
 struct ContentView: View {
