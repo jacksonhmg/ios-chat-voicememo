@@ -3,16 +3,25 @@ import UIKit
 class AppDelegate: NSObject, UIApplicationDelegate {
 
     func application(_ application: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-        // Ensure that the URL is a file URL
         guard url.isFileURL else { return false }
 
-        // Get the document directory path
         let fileManager = FileManager.default
         guard let documentsPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return false }
 
-        // Create a destination URL with the same last path component as the original file
-        let destinationURL = documentsPath.appendingPathComponent(url.lastPathComponent)
+        // Create a "VoiceMemos" folder if it doesn't exist
+        let voiceMemosPath = documentsPath.appendingPathComponent("VoiceMemos")
+        if !fileManager.fileExists(atPath: voiceMemosPath.path) {
+            do {
+                try fileManager.createDirectory(at: voiceMemosPath, withIntermediateDirectories: true, attributes: nil)
+            } catch {
+                print("Failed to create VoiceMemos directory: \(error)")
+                return false
+            }
+        }
 
+        // Save the file in the "VoiceMemos" folder
+        let destinationURL = voiceMemosPath.appendingPathComponent(url.lastPathComponent)
+        
         do {
             // If the file already exists at the destination, remove it first
             if fileManager.fileExists(atPath: destinationURL.path) {
@@ -37,4 +46,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
 }
+
+
+
 
