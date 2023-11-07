@@ -12,6 +12,7 @@ import Foundation
 import NaturalLanguage
 
 
+
 struct Transcription: Codable {
     let text: String
 }
@@ -31,6 +32,14 @@ extension String {
         
         return sentences
     }
+}
+
+public func vector(for string: String) -> [Double] {
+    guard let sentenceEmbedding = NLEmbedding.sentenceEmbedding(for: .english),
+          let vector = sentenceEmbedding.vector(for: string) else {
+        fatalError()
+    }
+    return vector
 }
 
 struct ContentView: View {
@@ -78,6 +87,28 @@ struct ContentView: View {
                                         let transcriptionResult = try decoder.decode(Transcription.self, from: data)
                                         print("Transcription: \(transcriptionResult.text)")
                                         self.transcribedText = transcriptionResult.text
+                                        let chunks = (self.transcribedText).chunkedIntoSentences()
+                                        var vectorFileManager: TextVectorFileManager?
+
+                                        if let manager = TextVectorFileManager(fileName: "SentenceVectors.json") {
+                                            manager.vectorizeAndStore(sentences: chunks)
+                                            vectorFileManager = manager
+                                        } else {
+                                            print("Failed to initialize the vector file manager.")
+                                        }
+                                        
+                                        if let manager = vectorFileManager {
+                                            let inputSentence = "An idea about an app"
+                                            let similarSentences = manager.findSimilarSentences(to: inputSentence, maxCount: 5)
+                                            for (sentence, distance) in similarSentences {
+                                                print("Sentence: \(sentence) - Distance: \(distance)")
+                                            }
+                                        } else {
+                                            print("Vector file manager is not initialized.")
+                                        }
+                                        
+                                        
+
                                     } catch {
                                         print("Error decoding transcription: \(error)")
                                     }

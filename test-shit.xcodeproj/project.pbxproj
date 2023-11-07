@@ -12,6 +12,7 @@
 		B1936BF52AF75B2E006BD2EF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1936BF42AF75B2E006BD2EF /* Assets.xcassets */; };
 		B1936BF82AF75B2E006BD2EF /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1936BF72AF75B2E006BD2EF /* Preview Assets.xcassets */; };
 		B1936C002AF99204006BD2EF /* audio.m4a in Resources */ = {isa = PBXBuildFile; fileRef = B1936BFF2AF99204006BD2EF /* audio.m4a */; };
+		B1936C022AFACDB4006BD2EF /* TextVectorFileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1936C012AFACDB4006BD2EF /* TextVectorFileManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -21,6 +22,7 @@
 		B1936BF42AF75B2E006BD2EF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1936BF72AF75B2E006BD2EF /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		B1936BFF2AF99204006BD2EF /* audio.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = audio.m4a; sourceTree = "<group>"; };
+		B1936C012AFACDB4006BD2EF /* TextVectorFileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextVectorFileManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -56,6 +58,7 @@
 				B1936BFF2AF99204006BD2EF /* audio.m4a */,
 				B1936BF02AF75B2C006BD2EF /* test_shitApp.swift */,
 				B1936BF22AF75B2C006BD2EF /* ContentView.swift */,
+				B1936C012AFACDB4006BD2EF /* TextVectorFileManager.swift */,
 				B1936BF42AF75B2E006BD2EF /* Assets.xcassets */,
 				B1936BF62AF75B2E006BD2EF /* Preview Content */,
 			);
@@ -141,6 +144,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B1936C022AFACDB4006BD2EF /* TextVectorFileManager.swift in Sources */,
 				B1936BF32AF75B2C006BD2EF /* ContentView.swift in Sources */,
 				B1936BF12AF75B2C006BD2EF /* test_shitApp.swift in Sources */,
 			);
