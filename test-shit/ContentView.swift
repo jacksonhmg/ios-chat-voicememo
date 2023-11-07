@@ -12,6 +12,7 @@ import Foundation
 import NaturalLanguage
 
 
+private var OPENAI_API_KEY = ""
 
 struct Transcription: Codable {
     let text: String
@@ -40,6 +41,55 @@ public func vector(for string: String) -> [Double] {
         fatalError()
     }
     return vector
+}
+
+func answerQFromDocs(question: String, docs: [String], completion: @escaping (Result<String, Error>) -> Void) {
+  let openAIApiURL = URL(string: "https://api.openai.com/v1/chat/completions")!
+    var request = URLRequest(url: openAIApiURL)
+    request.httpMethod = "POST"
+  request.addValue("Bearer \(OPENAI_API_KEY)", forHTTPHeaderField: "Authorization")
+    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+    // Define your prompt
+  let prompt: [String: Any] = [
+      "model": "gpt-3.5-turbo",
+      "messages": [
+        ["role": "system", "content": "You are a helpful assistant that that can answer questions about a user's transcribed voice memos. You will be given a question and you must use the given documents to decipher an answer to the user. Be extremely descriptive. Even if there are only brief mentions of the answer in the memos, that is fine, still bring it up to the user. Here are the docs \(docs)"],
+          ["role": "user", "content": question]
+      ]
+  ]
+    // Convert prompt to JSON data
+    let jsonData = try? JSONSerialization.data(withJSONObject: prompt)
+
+    request.httpBody = jsonData
+
+    // Create a task to perform the API call
+  let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+      if let error = error {
+          DispatchQueue.main.async {
+              completion(.failure(error))
+          }
+          return
+      }
+      
+      if let data = data {
+          // Print the raw response data here
+          print(String(data: data, encoding: .utf8) ?? "Invalid data")
+          
+          if let jsonResponse = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+             let messageContent = jsonResponse["choices"] as? [[String: Any]], let firstChoice = messageContent.first,
+             let message = firstChoice["message"] as? [String: String], let content = message["content"] {
+              DispatchQueue.main.async {
+                  completion(.success(content))
+              }
+          } else {
+              DispatchQueue.main.async {
+                  completion(.failure(NSError(domain: "com.example.error", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse API response"])))
+              }
+          }
+      }
+  }
+    // Start the task
+    task.resume()
 }
 
 struct ContentView: View {
@@ -103,6 +153,21 @@ struct ContentView: View {
                                             for (sentence, distance) in similarSentences {
                                                 print("Sentence: \(sentence) - Distance: \(distance)")
                                             }
+                                            let sentencesOnly: [String] = similarSentences.map { $0.0 }
+
+                                            
+                                            answerQFromDocs(question: "What's the main idea?", docs: sentencesOnly) { result in
+                                                switch result {
+                                                case .success(let content):
+                                                    print("LESGO A W")
+                                                    print(content)
+                                                    
+                                                case .failure(let error):
+                                                    //print("BRUHHHH DIS A FAILURE")
+                                                    print("Error occurred: \(error.localizedDescription)")
+                                                }
+                                            }
+                                            
                                         } else {
                                             print("Vector file manager is not initialized.")
                                         }
