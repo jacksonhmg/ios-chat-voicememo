@@ -96,10 +96,15 @@ struct ContentView: View {
     @State var audioPlayer: AVAudioPlayer!
     @State private var hasTranscriptionPermission: Bool = false
     @State var transcribedText: String = "empty"
+    @State var userQuestion: String = "" // Add this line to hold the user's question
+
 
         var body: some View {
                 VStack {
                         Text("play").font(.system(size: 45)).font(.largeTitle)
+                        TextField("Ask a question", text: $userQuestion) // Add a TextField for user input
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .padding()
                     HStack {
                         Spacer()
                         Button(action: {
@@ -148,15 +153,15 @@ struct ContentView: View {
                                         }
                                         
                                         if let manager = vectorFileManager {
-                                            let inputSentence = "An idea about an app"
-                                            let similarSentences = manager.findSimilarSentences(to: inputSentence, maxCount: 5)
+//                                            let inputSentence = "An idea about an app"
+                                            let similarSentences = manager.findSimilarSentences(to: userQuestion, maxCount: 5)
                                             for (sentence, distance) in similarSentences {
                                                 print("Sentence: \(sentence) - Distance: \(distance)")
                                             }
                                             let sentencesOnly: [String] = similarSentences.map { $0.0 }
 
-                                            
-                                            answerQFromDocs(question: "What's the main idea?", docs: sentencesOnly) { result in
+                                            print("User question was: \(userQuestion)")
+                                            answerQFromDocs(question: userQuestion, docs: sentencesOnly) { result in
                                                 switch result {
                                                 case .success(let content):
                                                     print("LESGO A W")
