@@ -93,10 +93,13 @@ func answerQFromDocs(question: String, docs: [String], completion: @escaping (Re
 }
 
 struct ContentView: View {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State var audioPlayer: AVAudioPlayer!
     @State private var hasTranscriptionPermission: Bool = false
     @State var transcribedText: String = "empty"
     @State var userQuestion: String = "" // Add this line to hold the user's question
+    @State var allTranscriptions = [String]()
+
 
 
         var body: some View {
@@ -133,62 +136,137 @@ struct ContentView: View {
                             print("Audio resource not found.")
                             return
                         }
-                        self.transcribeAudio(withApiKey: "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") { result in
-                            DispatchQueue.main.async { // Ensure you're on the main thread when updating the UI or handling the result
-                                switch result {
-                                case .success(let data):
-                                    do {
-                                        let decoder = JSONDecoder()
-                                        let transcriptionResult = try decoder.decode(Transcription.self, from: data)
-                                        print("Transcription: \(transcriptionResult.text)")
-                                        self.transcribedText = transcriptionResult.text
-                                        let chunks = (self.transcribedText).chunkedIntoSentences()
-                                        var vectorFileManager: TextVectorFileManager?
+                        
+                        let fileManager = FileManager.default
+                        guard let documentsPath = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
 
-                                        if let manager = TextVectorFileManager(fileName: "SentenceVectors.json") {
-                                            manager.vectorizeAndStore(sentences: chunks)
-                                            vectorFileManager = manager
-                                        } else {
-                                            print("Failed to initialize the vector file manager.")
-                                        }
-                                        
-                                        if let manager = vectorFileManager {
-//                                            let inputSentence = "An idea about an app"
-                                            let similarSentences = manager.findSimilarSentences(to: userQuestion, maxCount: 5)
-                                            for (sentence, distance) in similarSentences {
-                                                print("Sentence: \(sentence) - Distance: \(distance)")
+                        let voiceMemosPath = documentsPath.appendingPathComponent("VoiceMemos")
+
+                        do {
+                            let audioFiles = try fileManager.contentsOfDirectory(at: voiceMemosPath, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
+                            for audioFile in audioFiles where audioFile.pathExtension == "m4a" {
+                                // Handle each .m4a audio file
+                                print("Found audio file: \(audioFile.lastPathComponent)")
+                                
+                                
+                                self.uploadAndTranscribeAudioFile(audioFileURL: audioFile, apiKey: OPENAI_API_KEY) { result in
+                                    DispatchQueue.main.async {
+                                        switch result {
+                                        case .success(let data):
+                                            do {
+                                                let decoder = JSONDecoder()
+                                                let transcriptionResult = try decoder.decode(Transcription.self, from: data)
+                                                print("Transcription: \(transcriptionResult.text)")
+                                                self.allTranscriptions.append(transcriptionResult.text)
+                                            } catch {
+                                                print("Error transcribing audio: \(error.localizedDescription)")
                                             }
-                                            let sentencesOnly: [String] = similarSentences.map { $0.0 }
-
-                                            print("User question was: \(userQuestion)")
-                                            answerQFromDocs(question: userQuestion, docs: sentencesOnly) { result in
-                                                switch result {
-                                                case .success(let content):
-                                                    print("LESGO A W")
-                                                    print(content)
-                                                    
-                                                case .failure(let error):
-                                                    //print("BRUHHHH DIS A FAILURE")
-                                                    print("Error occurred: \(error.localizedDescription)")
-                                                }
-                                            }
-                                            
-                                        } else {
-                                            print("Vector file manager is not initialized.")
+                                        case .failure(let error):
+                                            // Handle the error case
+                                            print("Error transcribing audio: \(error.localizedDescription)")
+                                            // Here you can show the error to the user or update your state to indicate the error
                                         }
-                                        
-                                        
-
-                                    } catch {
-                                        print("Error decoding transcription: \(error)")
                                     }
-                                case .failure(let error):
-                                    // Handle the error case
-                                    print("Error transcribing audio: \(error.localizedDescription)")
-                                    // Here you can show the error to the user or update your state to indicate the error
                                 }
                             }
+                            
+                            
+                            let combinedText = self.allTranscriptions.joined(separator: "\n")
+
+                            let chunks = combinedText.chunkedIntoSentences()
+                            var vectorFileManager: TextVectorFileManager?
+                            
+                            if let manager = TextVectorFileManager(fileName: "SentenceVectors.json") {
+                                manager.vectorizeAndStore(sentences: chunks)
+                                vectorFileManager = manager
+                            } else {
+                                print("Failed to init the vector file manager")
+                            }
+                            
+                            if let manager = vectorFileManager {
+                                let similarSentences = manager.findSimilarSentences(to: userQuestion, maxCount: 5)
+                                for (sentence, distance) in similarSentences {
+                                    print("Sentence: \(sentence) - Distance: \(distance)")
+                                }
+                                let sentencesOnly: [String] = similarSentences.map { $0.0 }
+                                print("User question was: \(userQuestion)")
+                                answerQFromDocs(question: userQuestion, docs: sentencesOnly) { result in
+                                    switch result {
+                                    case .success(let content):
+                                        print("LESGO A W")
+                                        print(content)
+                                        
+                                    case .failure(let error):
+                                        //print("BRUHHHH DIS A FAILURE")
+                                        print("Error occurred: \(error.localizedDescription)")
+                                    }
+                                }
+                                
+                            } else {
+                                print("Vector file manager is not initialized.")
+                            }
+                            
+                        } catch {
+                            print("Failed to list contents of VoiceMemos directory: \(error)")
                         }
+                        
+                        
+//                         self.transcribeAudio(withApiKey: "") { result in
+//                             DispatchQueue.main.async { // Ensure you're on the main thread when updating the UI or handling the result
+//                                 switch result {
+//                                 case .success(let data):
+//                                     do {
+//                                         let decoder = JSONDecoder()
+//                                         let transcriptionResult = try decoder.decode(Transcription.self, from: data)
+//                                         print("Transcription: \(transcriptionResult.text)")
+//                                         self.transcribedText = transcriptionResult.text
+//                                         let chunks = (self.transcribedText).chunkedIntoSentences()
+//                                         var vectorFileManager: TextVectorFileManager?
+
+//                                         if let manager = TextVectorFileManager(fileName: "SentenceVectors.json") {
+//                                             manager.vectorizeAndStore(sentences: chunks)
+//                                             vectorFileManager = manager
+//                                         } else {
+//                                             print("Failed to initialize the vector file manager.")
+//                                         }
+                                        
+//                                         if let manager = vectorFileManager {
+// //                                            let inputSentence = "An idea about an app"
+//                                             let similarSentences = manager.findSimilarSentences(to: userQuestion, maxCount: 5)
+//                                             for (sentence, distance) in similarSentences {
+//                                                 print("Sentence: \(sentence) - Distance: \(distance)")
+//                                             }
+//                                             let sentencesOnly: [String] = similarSentences.map { $0.0 }
+
+//                                             print("User question was: \(userQuestion)")
+//                                             answerQFromDocs(question: userQuestion, docs: sentencesOnly) { result in
+//                                                 switch result {
+//                                                 case .success(let content):
+//                                                     print("LESGO A W")
+//                                                     print(content)
+                                                    
+//                                                 case .failure(let error):
+//                                                     //print("BRUHHHH DIS A FAILURE")
+//                                                     print("Error occurred: \(error.localizedDescription)")
+//                                                 }
+//                                             }
+                                            
+//                                         } else {
+//                                             print("Vector file manager is not initialized.")
+//                                         }
+                                        
+                                        
+
+//                                     } catch {
+//                                         print("Error decoding transcription: \(error)")
+//                                     }
+//                                 case .failure(let error):
+//                                     // Handle the error case
+//                                     print("Error transcribing audio: \(error.localizedDescription)")
+//                                     // Here you can show the error to the user or update your state to indicate the error
+//                                 }
+//                             }
+//                         }
 
                     }
                     Text(self.transcribedText)
@@ -197,6 +275,53 @@ struct ContentView: View {
                     preparePlayer()
                 }
         }
+    
+    func uploadAndTranscribeAudioFile(audioFileURL: URL, apiKey: String, completion: @escaping (Result<Data, Error>) -> Void) {
+        // URL for the transcription service
+        let url = URL(string: "https://api.openai.com/v1/audio/transcriptions")!
+        
+        // Set up the request
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.addValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        
+        // Create the body of the request
+        var data = Data()
+        data.append("--\(boundary)\r\n".data(using: .utf8)!)
+        data.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n".data(using: .utf8)!)
+        data.append("whisper-1\r\n".data(using: .utf8)!)
+        data.append("--\(boundary)\r\n".data(using: .utf8)!)
+        data.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(audioFileURL.lastPathComponent)\"\r\n".data(using: .utf8)!)
+        data.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)
+        if let audioData = try? Data(contentsOf: audioFileURL) {
+            data.append(audioData)
+        }
+        data.append("\r\n".data(using: .utf8)!)
+        data.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        // Set the body of the request to the multipart form data
+        request.httpBody = data
+        
+        // Start the upload task
+        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            
+            if let data = data {
+                completion(.success(data))
+            } else {
+                let error = NSError(domain: "TranscriptionError", code: 0, userInfo: [NSLocalizedDescriptionKey: "Data was not retrieved from request"])
+                completion(.failure(error))
+            }
+        }
+        task.resume()
+    }
+
     
     
 
